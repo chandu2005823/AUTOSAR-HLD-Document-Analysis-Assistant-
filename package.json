@@ -1,0 +1,15 @@
+{
+  "name": "autoarch-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AutoArch-AI - AUTOSAR High-Level Design Intelligence Platform",
+  "scripts": {
+    "dev:backend": "./venv/bin/uvicorn backend.api:app --host 127.0.0.1 --port 8000",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev": "npm --prefix frontend exec concurrently -k -n \"backend,frontend\" -c \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build": "npm --prefix frontend run build",
+    "test:backend": "./venv/bin/pytest tests/",
+    "test:frontend": "npm --prefix frontend test",
+    "test": "npm run test:backend && npm run test:frontend"
+  }
+}
