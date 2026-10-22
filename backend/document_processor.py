@@ -1,6 +1,5 @@
 import json
 import tempfile
-import uuid
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -18,6 +17,8 @@ from ingestion.chunker import create_chunks
 from ingestion.pdf_parser import extract_text_from_pdf
 from ingestion.table_extractor import create_table_chunks, extract_tables_from_pdf
 from rag.uploaded_document_db import build_uploaded_database
+from backend.upload_utils import copy_upload_to_path, upload_temp_dir
+from storage_paths import processed_dir as get_processed_dir
 
 EMPTY_UPLOAD_MESSAGE = "Uploaded file is empty (0 bytes). Please select a valid PDF."
 
@@ -52,52 +53,42 @@ def extract_document_metadata(pages):
 
 
 def process_uploaded_pdf(uploaded_file, *, user_id=None, project_id=None):
-    """Process a Streamlit UploadedFile and keep the data isolated per document version."""
+    """Process an uploaded PDF while keeping its temporary copy bounded and short-lived."""
     if uploaded_file is None:
         raise ValueError("No file was provided.")
 
-    if not hasattr(uploaded_file, "getbuffer"):
+    if not hasattr(uploaded_file, "getbuffer") and not hasattr(uploaded_file, "file"):
         raise TypeError("Uploaded file does not contain a valid PDF stream.")
 
     if user_id is None or project_id is None or not can_upload(user_id, project_id):
         raise PermissionError("An authorized project architect or admin is required to upload documents.")
     project = require_project_access(user_id, project_id)
-    filename = Path(uploaded_file.name).name
+    raw_filename = getattr(uploaded_file, "filename", None) or getattr(uploaded_file, "name", "")
+    filename = Path(raw_filename).name
     if not filename.lower().endswith(".pdf"):
         raise ValueError("Only PDF documents can be processed.")
 
-    temp_dir = Path(tempfile.gettempdir()) / "autoarch_ai"
-    temp_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="autoarch_upload_", dir=upload_temp_dir()) as temp_dir:
+        pdf_path = Path(temp_dir) / "upload.pdf"
+        payload_size = copy_upload_to_path(uploaded_file, pdf_path)
+        if payload_size == 0:
+            raise ValueError(EMPTY_UPLOAD_MESSAGE)
 
-    pdf_path = temp_dir / f"project_{project['id']}_{uuid.uuid4().hex}_{filename}"
-    try:
-        payload = uploaded_file.getbuffer()
-        payload_size = len(payload)
-    except (TypeError, ValueError) as error:
-        raise ValueError("Could not read the uploaded file. Please select a valid PDF.") from error
-    if payload_size == 0:
-        raise ValueError(EMPTY_UPLOAD_MESSAGE)
+        pages = extract_text_from_pdf(pdf_path)
+        if not pages or not any(page.get("text", "").strip() for page in pages):
+            raise ValueError("The uploaded PDF is empty or contains no extractable text.")
 
-    with open(pdf_path, "wb") as file:
-        file.write(payload)
+        text_chunks = create_chunks(pages, source_file=filename)
+        tables = extract_tables_from_pdf(pdf_path)
+        table_chunks = create_table_chunks(tables, start_chunk_id=len(text_chunks))
 
-    if pdf_path.stat().st_size == 0:
-        raise ValueError(EMPTY_UPLOAD_MESSAGE)
-
-    pages = extract_text_from_pdf(pdf_path)
-    if not pages or not any(page.get("text", "").strip() for page in pages):
-        raise ValueError("The uploaded PDF is empty or contains no extractable text.")
-
-    text_chunks = create_chunks(pages, source_file=filename)
-    tables = extract_tables_from_pdf(pdf_path)
-    table_chunks = create_table_chunks(tables, start_chunk_id=len(text_chunks))
     chunks = text_chunks + table_chunks
     traceability = extract_traceable_entities(pages)
     relationships = extract_relationships(pages)
     document_metadata = extract_document_metadata(pages)
 
-    processed_dir = PROJECT_ROOT / "data" / "processed"
-    processed_dir.mkdir(parents=True, exist_ok=True)
+    processed_dir_path = get_processed_dir(PROJECT_ROOT)
+    processed_dir_path.mkdir(parents=True, exist_ok=True)
 
     version_info = get_document_version(
         filename,
@@ -107,7 +98,7 @@ def process_uploaded_pdf(uploaded_file, *, user_id=None, project_id=None):
         project_id=project["id"],
     )
 
-    artifact_dir = processed_dir / "projects" / str(project["id"]) / version_info["document_id"]
+    artifact_dir = processed_dir_path / "projects" / str(project["id"]) / version_info["document_id"]
     artifact_dir.mkdir(parents=True, exist_ok=True)
     output_path = artifact_dir / "chunks.json"
     collection_name = project_collection_name(user_id, project["id"])

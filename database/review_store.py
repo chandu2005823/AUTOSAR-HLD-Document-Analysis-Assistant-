@@ -6,13 +6,15 @@ from pathlib import Path
 from database.access_control import can_review, require_project_access
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-REVIEW_FILE = PROJECT_ROOT / "data" / "processed" / "review_log.json"
+from storage_paths import processed_dir
+
+REVIEW_FILE = processed_dir(PROJECT_ROOT) / "review_log.json"
 
 
 def _review_file(project_id=None):
     if project_id is None:
         return REVIEW_FILE
-    return PROJECT_ROOT / "data" / "processed" / "projects" / str(project_id) / "review_log.json"
+    return processed_dir(PROJECT_ROOT) / "projects" / str(project_id) / "review_log.json"
 
 
 def save_review(

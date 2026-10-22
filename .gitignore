@@ -33,6 +33,16 @@ test_env/
 data/chroma/
 data/documents/
 data/processed/
+data/model-cache/
+data/huggingface/
+.cache/huggingface/
+
+# Local temporary upload staging (only if explicitly configured inside the repo)
+tmp/autoarch_ai/
+
+# SQLite journal and write-ahead log sidecars
+*.db-*
+*.sqlite3-*
 
 # ==============================
 # Logs / Temporary Files
@@ -57,3 +67,8 @@ pipcheck.txt
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Deployment build output and local platform state
+frontend/dist/
+frontend/.vercel/
+*.tsbuildinfo

@@ -1,0 +1,38 @@
+# Applying this Blueprint creates a paid native Python 1 CPU / 2 GB service and a 5 GB persistent disk.
+# Review current Render costs and approve them before syncing this Blueprint.
+services:
+  - type: web
+    name: archlens-api
+    runtime: python
+    plan: 1c-2g
+    # Explicit +cpu pins select CPU wheels; the extra index alone would not ensure CPU-only installs.
+    buildCommand: >-
+      pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt "torch==2.14.0+cpu" "torchvision==0.29.0+cpu"
+    startCommand: uvicorn backend.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    numInstances: 1
+    disk:
+      name: archlens-data
+      mountPath: /var/data
+      sizeGB: 5
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.2
+      - key: AUTOARCH_DATA_DIR
+        value: /var/data
+      - key: AUTOARCH_REQUIRE_API_SECRET
+        value: "true"
+      - key: AUTOARCH_API_SECRET
+        generateValue: true
+      - key: AUTOARCH_CORS_ORIGINS
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: AUTOARCH_MAX_UPLOAD_MB
+        value: "50"
+      - key: AUTOARCH_OCR_DPI
+        value: "300"
+      - key: AUTOARCH_TEMP_DIR
+        value: /tmp/autoarch_ai
+      - key: HF_HOME
+        value: /var/data/huggingface

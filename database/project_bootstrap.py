@@ -14,7 +14,9 @@ from database.access_control import (
 
 CODE_ROOT = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = CODE_ROOT
-CHROMA_DIR = PROJECT_ROOT / "data" / "chroma"
+from storage_paths import chroma_dir, data_dir, processed_dir
+
+CHROMA_DIR = chroma_dir(PROJECT_ROOT)
 CANONICAL_COLLECTION = "autosar_documents"
 DEMO_FILENAME = "AUTOSAR_AP_EXP_SWArchitecture.pdf"
 
@@ -36,7 +38,7 @@ def seed_canonical_demo_project(user_id, project_id):
         return None
 
     records = source.get(include=["documents", "metadatas", "embeddings"])
-    source_file = PROJECT_ROOT / "data" / "documents" / DEMO_FILENAME
+    source_file = data_dir(PROJECT_ROOT) / "documents" / DEMO_FILENAME
 
     for module_path in (CODE_ROOT, CODE_ROOT / "extraction"):
         if str(module_path) not in sys.path:
@@ -56,7 +58,7 @@ def seed_canonical_demo_project(user_id, project_id):
         project_id=project_id,
     )
     document_id = version_info["document_id"]
-    artifact_dir = PROJECT_ROOT / "data" / "processed" / "projects" / str(project_id) / document_id
+    artifact_dir = processed_dir(PROJECT_ROOT) / "projects" / str(project_id) / document_id
     artifact_dir.mkdir(parents=True, exist_ok=True)
     traceability = extract_traceable_entities(pages)
     relationships = extract_relationships(pages)

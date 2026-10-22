@@ -14,7 +14,8 @@ import {
   AuditLogEntry,
 } from '@/types';
 
-const API_BASE = '/api';
+const configuredApiBase = import.meta.env.VITE_API_BASE_URL?.trim();
+const API_BASE = (configuredApiBase || '/api').replace(/\/+$/, '');
 
 class ApiClient {
   private getToken(): string | null {

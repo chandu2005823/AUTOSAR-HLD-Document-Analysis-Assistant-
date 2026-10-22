@@ -13,12 +13,13 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATABASE_PATH = Path(os.environ.get(
+from storage_paths import configured_path, processed_dir
+
+DATABASE_PATH = configured_path(
     "AUTOARCH_DB_PATH",
-    PROJECT_ROOT / "data" / "processed" / "access_control.sqlite3",
-))
-if not DATABASE_PATH.is_absolute():
-    DATABASE_PATH = PROJECT_ROOT / DATABASE_PATH
+    processed_dir(PROJECT_ROOT) / "access_control.sqlite3",
+    PROJECT_ROOT,
+)
 PASSWORD_ITERATIONS = 600_000
 VALID_ROLES = {"admin", "architect", "viewer"}
 ROLE_LEVEL = {"viewer": 1, "architect": 2, "admin": 3}
@@ -452,10 +453,10 @@ def _document_artifact_dir(value, project_id, document_id):
     if not artifact_dir.is_absolute():
         artifact_dir = PROJECT_ROOT / artifact_dir
     if not artifact_dir.exists():
+        from storage_paths import processed_dir
+
         current_artifact_dir = (
-            PROJECT_ROOT
-            / "data"
-            / "processed"
+            processed_dir(PROJECT_ROOT)
             / "projects"
             / str(project_id)
             / document_id

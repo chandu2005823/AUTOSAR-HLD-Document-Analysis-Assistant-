@@ -20,6 +20,11 @@ if _TOKEN_SECRET:
         raise RuntimeError("AUTOARCH_API_SECRET must be at least 32 bytes.")
     _TOKEN_SECRET = _TOKEN_SECRET.encode("utf-8")
 else:
+    require_configured_secret = os.environ.get("AUTOARCH_REQUIRE_API_SECRET", "").lower() in {
+        "1", "true", "yes",
+    }
+    if require_configured_secret:
+        raise RuntimeError("AUTOARCH_API_SECRET must be configured when AUTOARCH_REQUIRE_API_SECRET is enabled.")
     _TOKEN_SECRET = secrets.token_bytes(32)
 
 _bearer = HTTPBearer(auto_error=False)

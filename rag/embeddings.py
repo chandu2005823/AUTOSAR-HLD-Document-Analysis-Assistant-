@@ -1,15 +1,27 @@
+from threading import Lock
+
 from sentence_transformers import SentenceTransformer
+
+
+_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+_MODEL = None
+_MODEL_LOCK = Lock()
+
+
+def _get_model():
+    global _MODEL
+    if _MODEL is None:
+        with _MODEL_LOCK:
+            if _MODEL is None:
+                print("Loading embedding model...")
+                _MODEL = SentenceTransformer(_MODEL_NAME)
+                print("Embedding model loaded.")
+    return _MODEL
 
 
 class EmbeddingModel:
     def __init__(self):
-        print("Loading embedding model...")
-
-        self.model = SentenceTransformer(
-            "sentence-transformers/all-MiniLM-L6-v2"
-        )
-
-        print("Embedding model loaded.")
+        self.model = _get_model()
 
     def encode(self, texts):
         """

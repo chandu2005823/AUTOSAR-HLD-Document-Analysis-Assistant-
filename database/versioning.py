@@ -4,7 +4,9 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-VERSION_FILE = PROJECT_ROOT / "data" / "processed" / "document_versions.json"
+from storage_paths import processed_dir
+
+VERSION_FILE = processed_dir(PROJECT_ROOT) / "document_versions.json"
 
 
 def _safe_document_id(filename: str) -> str:

@@ -13,7 +13,9 @@ from database.access_control import prompt_for_user_project
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CHROMA_DIR = PROJECT_ROOT / "data" / "chroma"
+from storage_paths import chroma_dir
+
+CHROMA_DIR = chroma_dir(PROJECT_ROOT)
 
 DEFAULT_COLLECTION = "autosar_documents"
 LEXICAL_STOP_WORDS = {

@@ -6,6 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
+import os
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -35,9 +36,19 @@ app = FastAPI(
     version="1.0.0",
 )
 
+def _cors_origins():
+    configured = os.environ.get("AUTOARCH_CORS_ORIGINS", "")
+    origins = [origin.strip().rstrip("/") for origin in configured.split(",") if origin.strip()]
+    if not origins:
+        return ["http://localhost:5173", "http://127.0.0.1:5173"]
+    if "*" in origins:
+        raise RuntimeError("AUTOARCH_CORS_ORIGINS must list explicit origins; wildcard CORS is not allowed.")
+    return origins
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

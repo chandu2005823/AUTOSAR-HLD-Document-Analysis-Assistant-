@@ -17,6 +17,7 @@ class UploadedFile:
 
 def configure_processor(monkeypatch, tmp_path):
     monkeypatch.setattr(document_processor, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setenv("AUTOARCH_TEMP_DIR", str(tmp_path / "uploads"))
     monkeypatch.setattr(document_processor, "can_upload", lambda *_args: True)
     monkeypatch.setattr(
         document_processor,
@@ -51,10 +52,15 @@ def test_valid_pdf_reaches_existing_processing_pipeline(monkeypatch, tmp_path):
     valid_pdf = document.tobytes()
     document.close()
     extraction_paths = []
+
+    def extract_text(path):
+        extraction_paths.append((Path(path), Path(path).stat().st_size))
+        return [{"page_number": 1, "text": "Architecture"}]
+
     monkeypatch.setattr(
         document_processor,
         "extract_text_from_pdf",
-        lambda path: extraction_paths.append(Path(path)) or [{"page_number": 1, "text": "Architecture"}],
+        extract_text,
     )
     monkeypatch.setattr(
         document_processor,
@@ -81,4 +87,5 @@ def test_valid_pdf_reaches_existing_processing_pipeline(monkeypatch, tmp_path):
     assert result["filename"] == "valid.pdf"
     assert result["version"] == 1
     assert len(extraction_paths) == 1
-    assert extraction_paths[0].stat().st_size > 0
+    assert extraction_paths[0][1] > 0
+    assert not extraction_paths[0][0].exists()

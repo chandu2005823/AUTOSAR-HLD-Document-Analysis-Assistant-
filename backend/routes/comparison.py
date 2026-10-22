@@ -53,18 +53,39 @@ def compare_uploaded_files(
 ):
     require_project_roles(project, "admin", "architect")
     import tempfile
+    from pathlib import Path
+
+    from backend.upload_utils import (
+        UploadTooLargeError,
+        copy_upload_to_path,
+        upload_temp_dir,
+    )
     from ingestion.pdf_parser import extract_text_from_pdf
     from extraction.traceability import extract_traceable_entities
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_old:
-        temp_old.write(baseline_file.file.read())
-        old_path = temp_old.name
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_new:
-        temp_new.write(current_file.file.read())
-        new_path = temp_new.name
+    for uploaded in (baseline_file, current_file):
+        if not (uploaded.filename or "").lower().endswith(".pdf"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "invalid_file", "message": "Only PDF uploads are supported."},
+            )
 
-    old_pages = extract_text_from_pdf(old_path)
-    new_pages = extract_text_from_pdf(new_path)
+    try:
+        with tempfile.TemporaryDirectory(
+            prefix="autoarch_compare_", dir=upload_temp_dir()
+        ) as temp_dir:
+            old_path = Path(temp_dir) / "baseline.pdf"
+            new_path = Path(temp_dir) / "current.pdf"
+            copy_upload_to_path(baseline_file, old_path)
+            copy_upload_to_path(current_file, new_path)
+            old_pages = extract_text_from_pdf(old_path)
+            new_pages = extract_text_from_pdf(new_path)
+    except UploadTooLargeError as error:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={"code": "upload_too_large", "message": str(error)},
+        ) from None
+
     old_records = extract_traceable_entities(old_pages)
     new_records = extract_traceable_entities(new_pages)
     comparison = compare_entities(old_records, new_records)

@@ -7,7 +7,13 @@ from typing import Any, Optional
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-AUDIT_DB_PATH = PROJECT_ROOT / "data" / "processed" / "audit_log.sqlite3"
+from storage_paths import configured_path, processed_dir
+
+AUDIT_DB_PATH = configured_path(
+    "AUTOARCH_AUDIT_DB_PATH",
+    processed_dir(PROJECT_ROOT) / "audit_log.sqlite3",
+    PROJECT_ROOT,
+)
 
 
 def _ensure_db() -> sqlite3.Connection:

@@ -9,7 +9,9 @@ from database.access_control import prompt_for_user_project
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CHROMA_DIR = PROJECT_ROOT / "data" / "chroma"
+from storage_paths import chroma_dir, processed_dir
+
+CHROMA_DIR = chroma_dir(PROJECT_ROOT)
 DEFAULT_COLLECTION = "uploaded_autosar_documents"
 
 
@@ -76,7 +78,7 @@ def build_uploaded_database(json_path, *, user_id=None, project_id=None, collect
 if __name__ == "__main__":
     user, project = prompt_for_user_project()
     build_uploaded_database(
-        PROJECT_ROOT / "data" / "processed" / "uploaded_chunks.json",
+        processed_dir(PROJECT_ROOT) / "uploaded_chunks.json",
         user_id=user["id"],
         project_id=project["id"],
     )

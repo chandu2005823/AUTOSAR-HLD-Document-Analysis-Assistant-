@@ -7,18 +7,19 @@ from backend.schemas import DocumentResponse
 from database.access_control import AuthorizationError, list_project_documents
 from database.audit_log import log_event
 from backend.document_processor import process_uploaded_pdf
+from backend.upload_utils import UploadTooLargeError
 
 
 router = APIRouter(prefix="/projects/{project_id}/documents", tags=["documents"])
 
 
 class _UploadedDocument:
-    def __init__(self, name, content):
-        self.name = name
-        self._content = content
+    """Expose FastAPI uploads through the existing processor's filename interface."""
 
-    def getbuffer(self):
-        return memoryview(self._content)
+    def __init__(self, upload: UploadFile):
+        self.name = Path(upload.filename or "").name
+        self.filename = self.name
+        self.file = upload.file
 
 
 def _document_response(record):
@@ -50,12 +51,16 @@ def upload_document(
             detail={"code": "invalid_file", "message": "Only PDF uploads are supported."},
         )
     try:
-        payload = file.file.read()
         result = process_uploaded_pdf(
-            _UploadedDocument(filename, payload),
+            _UploadedDocument(file),
             user_id=current_user["id"],
             project_id=project_id,
         )
+    except UploadTooLargeError as error:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={"code": "upload_too_large", "message": str(error)},
+        ) from None
     except AuthorizationError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

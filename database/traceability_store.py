@@ -4,12 +4,9 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-DEFAULT_OUTPUT_FILE = (
-    PROJECT_ROOT
-    / "data"
-    / "processed"
-    / "traceability.json"
-)
+from storage_paths import processed_dir
+
+DEFAULT_OUTPUT_FILE = processed_dir(PROJECT_ROOT) / "traceability.json"
 
 
 def save_traceability(records, output_file=None):
